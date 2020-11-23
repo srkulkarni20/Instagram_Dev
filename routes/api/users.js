@@ -5,28 +5,19 @@ const jwt = require('jsonwebtoken');
 const router = express.Router();
 const User = require('../../models/User');
 const keys = require('../../config/keys');
+const passport=require('passport');
+const validateRegisterInput = require('../../validation/register');
+const validateLoginInput = require('../../validation/login');
+
 
 // @route   POST api/users/register
 // @desc    Register user
 // @access  Public
 router.post('/register', (req, res) => {
-  if(!(req.body.email))
-{
-  return res.status(400).json({msg :'Email Field required'});
-}
-if(!(req.body.password))
-{
-  return res.status(400).json({msg :'Password Required'});
-}
-if(!(req.body.name))
-{
-  return res.status(400).json({msg :'Name Required'});
-}
-var valid = validator.validate(req.body.email);
-if(!valid)
-{
-  return res.status(400).json({email: 'Email Not Valid'});
-}
+  const {errors, isValid} = validateRegisterInput(req.body);
+  if (!isValid){
+    return res.status(400).json(errors);
+  }
   User.findOne({email: req.body.email })
     .then(user => {
       if (user){
@@ -65,15 +56,11 @@ if(!valid)
 // @desc    Login user / return JWT token
 // @access  Public
 router.post('/login', (req, res) => {
-  if(!(req.body.email))
-{
-  return res.status(400).json({msg :'Email Field required'});
-}
-if(!(req.body.password))
-{
-  return res.status(400).json({msg :'Password Required'});
-}
-
+  
+  const {errors, isValid} = validateLoginInput(req.body);
+  if (!isValid){
+    return res.status(400).json(errors);
+  }
   User.findOne({email: req.body.email})
     .then(user => {
       if (!user){
@@ -94,7 +81,7 @@ if(!(req.body.password))
                 keys.secretOrkey,
                 {expiresIn: 3600},
                 (err, token) => {
-                  return res.json({token: 'Bearer ' + token+keys.secretOrKey}
+                  return res.json({token: 'Bearer ' + token}
                   )
                 }
                 );
@@ -108,5 +95,20 @@ if(!(req.body.password))
     .catch(err => console.log(err));
 })
 
+// @route   get api/users/current
+// @desc    Register user
+// @access  Private
+router.get(
+  '/current',
+  passport.authenticate('jwt',{session: false}),
+  (req,res) => {
+    res.json({
+      id: req.user.id,
+      name: req.user.name,
+      email:req.user.email
+    });
+  }
+
+)
 
 module.exports = router;
